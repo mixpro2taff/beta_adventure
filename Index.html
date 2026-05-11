@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>AETHON — L'Éveil du Cristal Noir</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#000;color:#fff;font-family:'Courier New',monospace;overflow:hidden;user-select:none;}
+canvas{display:block;image-rendering:pixelated;}
+#ui{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
+
+/* HUD TOP */
+#hud{position:absolute;top:8px;left:8px;display:flex;gap:10px;align-items:center;pointer-events:none;background:rgba(0,0,0,0.6);border:1px solid #333;border-radius:6px;padding:6px 10px;}
+.bar-wrap{display:flex;flex-direction:column;gap:2px;}
+.bar-label{font-size:8px;color:#888;letter-spacing:1px;text-transform:uppercase;}
+.bar-bg{background:#1a1a1a;border-radius:2px;border:1px solid #333;}
+.bar{height:7px;border-radius:1px;transition:width 0.3s;}
+#hp-bar{background:linear-gradient(90deg,#c02020,#e05050);width:120px;}
+#mp-bar{background:linear-gradient(90deg,#1040b0,#4090e0);width:120px;}
+#xp-bar{background:linear-gradient(90deg,#806010,#f0c040);width:120px;}
+#gold-display{color:#f0c040;font-size:13px;font-weight:bold;margin-left:4px;}
+#player-name{font-size:11px;color:#ccc;font-weight:bold;}
+
+/* ZONE + LEVEL */
+#zone-info{position:absolute;top:8px;right:8px;text-align:right;background:rgba(0,0,0,0.6);border:1px solid #333;border-radius:6px;padding:6px 10px;font-size:10px;color:#aaa;pointer-events:none;}
+#zone-name{font-size:12px;color:#f0c040;font-weight:bold;}
+
+/* POWERS */
+#power-bar{position:absolute;bottom:48px;left:50%;transform:translateX(-50%);display:flex;gap:6px;pointer-events:none;background:rgba(0,0,0,0.7);border:1px solid #333;border-radius:8px;padding:6px 10px;}
+.pslot{width:42px;height:42px;border:1px solid #444;border-radius:6px;background:#0a0a1a;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;transition:border-color 0.2s;}
+.pslot.ready{border-color:#5090e0;box-shadow:0 0 6px rgba(80,144,224,0.4);}
+.pslot.no-mp{border-color:#800;opacity:0.6;}
+.pslot .picon{font-size:16px;line-height:1;}
+.pslot .pkey{position:absolute;top:2px;left:3px;font-size:7px;color:#666;}
+.pslot .pname{font-size:6px;color:#888;margin-top:1px;text-align:center;line-height:1;}
+.pslot .pcd-bar{position:absolute;bottom:0;left:0;height:3px;background:#5090e0;border-radius:0 0 5px 5px;transition:width 0.1s;}
+
+/* WEAPON SLOT */
+#weapon-slot{position:absolute;bottom:48px;right:8px;background:rgba(0,0,0,0.7);border:1px solid #555;border-radius:6px;padding:6px 10px;font-size:10px;color:#ccc;pointer-events:none;}
+#weapon-slot .wname{color:#f0c040;font-size:11px;}
+
+/* MESSAGE BOX */
+#msg-wrap{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);display:none;pointer-events:none;max-width:460px;width:90%;}
+#msg-box{background:rgba(5,5,20,0.95);border:1px solid #445;border-radius:8px;padding:10px 14px;font-size:11px;color:#dde;line-height:1.6;}
+#msg-speaker{font-size:10px;color:#f0c040;margin-bottom:4px;font-weight:bold;}
+
+/* QUEST LOG */
+#quest-log{position:absolute;top:60px;left:8px;background:rgba(0,0,0,0.75);border:1px solid #335;border-radius:6px;padding:8px;width:190px;display:none;pointer-events:none;}
+#quest-log h3{font-size:9px;color:#8090c0;margin-bottom:5px;letter-spacing:2px;}
+.qitem{font-size:9px;color:#aaa;margin-bottom:3px;padding-left:8px;position:relative;}
+.qitem::before{content:'▸';position:absolute;left:0;color:#5090e0;}
+.qitem.done{color:#508050;text-decoration:line-through;}
+.qitem.done::before{content:'✓';color:#508050;}
+
+/* CONTROLS */
+#controls{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);font-size:8px;color:#555;white-space:nowrap;}
+
+/* OVERLAYS */
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,8,0.92);display:none;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px;pointer-events:all;z-index:20;overflow-y:auto;}
+.overlay-title{font-size:24px;color:#f0c040;letter-spacing:4px;margin-bottom:4px;text-shadow:0 0 20px rgba(240,192,64,0.5);}
+.overlay-sub{font-size:11px;color:#888;margin-bottom:18px;letter-spacing:1px;}
+
+/* SHOP */
+#shop-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:560px;width:100%;}
+.sitem{background:#070712;border:1px solid #334;border-radius:6px;padding:10px;cursor:pointer;transition:all 0.15s;}
+.sitem:hover{border-color:#f0c040;background:#0f0f22;}
+.sitem .sicon{font-size:20px;margin-bottom:4px;}
+.sitem .sname{font-size:11px;color:#f0c040;margin-bottom:3px;font-weight:bold;}
+.sitem .sdesc{font-size:9px;color:#888;margin-bottom:5px;line-height:1.4;}
+.sitem .sprice{font-size:10px;color:#c8a830;}
+.sitem .stag{font-size:8px;color:#5090e0;margin-top:2px;}
+.overlay-gold{font-size:12px;color:#f0c040;margin:10px 0;}
+.overlay-btn{background:transparent;border:1px solid #555;color:#aaa;padding:7px 22px;border-radius:4px;cursor:pointer;font-family:'Courier New',monospace;font-size:11px;margin-top:10px;transition:all 0.15s;}
+.overlay-btn:hover{border-color:#f0c040;color:#f0c040;}
+
+/* DIALOGUE OVERLAY */
+#dialogue-overlay{position:absolute;bottom:0;left:0;width:100%;background:rgba(0,0,15,0.97);border-top:1px solid #335;padding:14px 20px 10px;display:none;pointer-events:all;z-index:15;}
+#dlg-portrait{width:52px;height:52px;border-radius:50%;border:2px solid #446;margin-right:14px;float:left;display:flex;align-items:center;justify-content:center;font-size:22px;background:#111;}
+#dlg-name{font-size:13px;color:#f0c040;font-weight:bold;margin-bottom:3px;}
+#dlg-text{font-size:11px;color:#ccd;line-height:1.6;max-width:560px;min-height:42px;}
+#dlg-hint{font-size:9px;color:#556;margin-top:8px;}
+#dlg-choices{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.dlg-choice{background:#0a0a1a;border:1px solid #446;border-radius:4px;padding:4px 10px;font-size:10px;color:#aab;cursor:pointer;transition:all 0.15s;}
+.dlg-choice:hover{border-color:#f0c040;color:#f0c040;}
+
+/* DEATH / LEVEL UP */
+#death-screen{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(60,0,0,0.85);display:none;align-items:center;justify-content:center;flex-direction:column;z-index:30;pointer-events:all;}
+#lvlup-flash{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(240,192,64,0);pointer-events:none;z-index:25;transition:background 0.3s;}
+
+/* MINIMAP */
+#minimap{position:absolute;top:8px;right:8px;display:none;}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <!-- HUD -->
+  <div id="hud">
+    <div id="player-name">⚔ Kael</div>
+    <div style="width:1px;background:#333;height:30px;margin:0 4px;"></div>
+    <div class="bar-wrap">
+      <div class="bar-label">❤ Vie</div>
+      <div class="bar-bg" style="width:120px;height:9px;"><div class="bar" id="hp-bar"></div></div>
+      <div style="font-size:8px;color:#666" id="hp-text"></div>
+    </div>
+    <div class="bar-wrap">
+      <div class="bar-label">✦ Mana</div>
+      <div class="bar-bg" style="width:120px;height:9px;"><div class="bar" id="mp-bar"></div></div>
+    </div>
+    <div class="bar-wrap">
+      <div class="bar-label">★ XP</div>
+      <div class="bar-bg" style="width:80px;height:9px;"><div class="bar" id="xp-bar" style="width:0px"></div></div>
+    </div>
+    <div id="gold-display">⬡ 0</div>
+  </div>
+
+  <!-- Zone Info -->
+  <div id="zone-info">
+    <div id="zone-name">Village d'Aethon</div>
+    <div id="level-stat">Nv.1 | ATK:20 DEF:5</div>
+    <div id="kills-stat" style="font-size:9px;margin-top:2px;color:#666">Ennemis vaincus: 0</div>
+  </div>
+
+  <!-- Quest Log -->
+  <div id="quest-log">
+    <h3>📜 QUÊTES</h3>
+    <div id="quest-list"></div>
+  </div>
+
+  <!-- Powers -->
+  <div id="power-bar">
+    <div class="pslot" id="ps0"><div class="pkey">1</div><div class="picon">⚡</div><div class="pname">Éclair</div><div class="pcd-bar" id="cd0"></div></div>
+    <div class="pslot" id="ps1"><div class="pkey">2</div><div class="picon">🔥</div><div class="pname">Feu</div><div class="pcd-bar" id="cd1"></div></div>
+    <div class="pslot" id="ps2"><div class="pkey">3</div><div class="picon">🌀</div><div class="pname">Vent</div><div class="pcd-bar" id="cd2"></div></div>
+    <div class="pslot" id="ps3"><div class="pkey">4</div><div class="picon">🔒</div><div class="pname">Glace</div><div class="pcd-bar" id="cd3"></div></div>
+    <div class="pslot" id="ps4"><div class="pkey">5</div><div class="picon">🔒</div><div class="pname">Ombre</div><div class="pcd-bar" id="cd4"></div></div>
+  </div>
+
+  <!-- Weapon -->
+  <div id="weapon-slot">🗡 <span id="weapon-name" class="wname">Épée Rouillée</span></div>
+
+  <!-- Messages flottants -->
+  <div id="msg-wrap"><div id="msg-box"><div id="msg-speaker"></div><div id="msg-text"></div></div></div>
+
+  <!-- Controls -->
+  <div id="controls">ZQSD/Flèches: déplacement | ESPACE: attaque | 1-5: pouvoirs | F: interagir | TAB: quêtes | ESC: boutique (au village)</div>
+
+  <!-- Level up flash -->
+  <div id="lvlup-flash"></div>
+</div>
+
+<!-- SHOP OVERLAY -->
+<div class="overlay" id="shop-overlay">
+  <div class="overlay-title">✦ FORGE & MAGIE D'AETHON ✦</div>
+  <div class="overlay-sub">Marchand Ozimuth — "Tout s'achète, même l'espoir"</div>
+  <div class="overlay-gold">Or disponible: <span id="shop-gold">0</span> ⬡</div>
+  <div id="shop-grid"></div>
+  <button class="overlay-btn" id="close-shop">[ Fermer — ESC ]</button>
+</div>
+
+<!-- DIALOGUE OVERLAY -->
+<div id="dialogue-overlay">
+  <div style="display:flex;align-items:flex-start;">
+    <div id="dlg-portrait">?</div>
+    <div style="flex:1;">
+      <div id="dlg-name">???</div>
+      <div id="dlg-text">...</div>
+      <div id="dlg-hint">[ F / Espace pour continuer ]</div>
+      <div id="dlg-choices"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DEATH SCREEN -->
+<div id="death-screen">
+  <div style="font-size:32px;color:#c02020;letter-spacing:4px;margin-bottom:10px;">VOUS ÊTES TOMBÉ</div>
+  <div style="font-size:13px;color:#888;margin-bottom:20px;">Le Cristal Noir a absorbé votre âme... pour l'instant.</div>
+  <button class="overlay-btn" id="respawn-btn">[ Ressusciter au village ]</button>
+</div>
+
+<script>
+// ============================================================
+// AETHON — L'Éveil du Cristal Noir — v2 (Extended)
+// ============================================================
+const C = document.getElementById('c');
+const ctx = C.getContext('2d');
+C.width = 800; C.height = 520;
+const TILE = 32;
+
+// ============================================================
+// STORY FLAGS & QUESTS
+// ============================================================
+const FLAGS = {
+  metSira: false, metVaren: false, metOzimuth: false, metKorrath: false,
+  metElina: false, metGarek: false, metTheron: false, metSylva: false,
+  killedBoss1: false, killedBoss2: false, killedBoss3: false,
+  foundOrbe1: false, foundOrbe2: false, foundOrbe3: false,
+  learnedGlace: false, learnedOmbre: false,
+  chestOpened: {},
+  kills: 0,
+  totalKills: 0,
+};
+
+const QUESTS = [
+  {id:'q1', title:"Parler à Varen le sage", done:false, hint:"Il est dans la bibliothèque au nord du village"},
+  {id:'q2', title:"Trouver l'Orbe de Foudre (Donjon 1)", done:false, hint:"Explorez le Donjon de l'Oubli — coffre au fond à droite"},
+  {id:'q3', title:"Trouver l'Orbe de Feu (Forêt Maudite)", done:false, hint:"Varen: 'La forêt à l'ouest cache l'Orbe de Feu'"},
+  {id:'q4', title:"Trouver l'Orbe de Glace (Mines de Fer)", done:false, hint:"Garek le mineur sait où elle se trouve"},
+  {id:'q5', title:"Apprendre le Sort de Glace", done:false, hint:"Elina la sorcière peut vous l'enseigner — apportez les 3 Orbes"},
+  {id:'q6', title:"Vaincre le Seigneur des Ombres", done:false, hint:"Il attend dans les Ruines Oubliées, au-delà des mines"},
+];
+
+// ============================================================
+// WEAPONS
+// ============================================================
+const WEAPONS_DB = {
+  rusty:   {name:'Épée Rouillée',   icon:'🗡', atk:0,  reach:1.4, speed:25, color:'#888', desc:'Votre arme de départ'},
+  iron:    {name:'Épée de Fer',     icon:'⚔', atk:10, reach:1.5, speed:22, color:'#aac', desc:'Solide et fiable'},
+  silver:  {name:'Lame d\'Argent',  icon:'🌙', atk:20, reach:1.6, speed:20, color:'#ddf', desc:'Efficace contre les morts-vivants (+2x dmg)'},
+  rune:    {name:'Épée Runique',    icon:'✨', atk:35, reach:1.7, speed:18, color:'#90f', desc:'Gravée de runes anciennes, +MP à chaque coup'},
+  shadow:  {name:'Lame des Ombres', icon:'🌑', atk:50, reach:1.8, speed:15, color:'#308', desc:'Absorbe 10% des dégâts en HP'},
+  crystal: {name:'Cristal-Lame',   icon:'💎', atk:70, reach:2.0, speed:12, color:'#0ff', desc:'Forgée du Cristal Noir brisé — arme ultime'},
+};
+
+// ============================================================
+// POWERS
+// ============================================================
+const POWERS_DB = [
+  {id:'lightning', name:'Éclair',        icon:'⚡', cd:120, cost:12, dmg:40, color:'#ffe060', type:'aoe',  radius:2.5, locked:false,  desc:'Foudre en zone autour de vous'},
+  {id:'fire',      name:'Boule de Feu',  icon:'🔥', cd:150, cost:20, dmg:65, color:'#ff6020', type:'proj', speed:0.14, locked:false,  desc:'Projectile de feu directionnel'},
+  {id:'wind',      name:'Tourbillon',    icon:'🌀', cd:80,  cost:8,  dmg:25, color:'#60d0ff', type:'aoe',  radius:3.0, locked:false,  desc:'Rafale en zone + repousse'},
+  {id:'ice',       name:'Nova de Glace', icon:'❄', cd:200, cost:30, dmg:80, color:'#80e0ff', type:'aoe',  radius:3.5, locked:true,   desc:'Congèle tous les ennemis proches'},
+  {id:'shadow',    name:'Flèche d\'Ombre',icon:'🌑',cd:180, cost:25, dmg:90, color:'#8030c0', type:'proj', speed:0.18, locked:true,   desc:'Projectile d\'ombre qui ignore la défense'},
+];
+
+// ============================================================
+// MAPS (30x18 tiles each)
+// ============================================================
+// Tiles: 0=herbe, 1=mur/arbre, 2=eau, 3=chemin, 4=maison, 5=boutique,
+//        6=portail, 7=coffre, 8=sable, 9=fleur, 10=pont,
+//        11=bibliothèque, 12=autel, 13=ruines_mur, 14=lave, 15=glace,
+//        16=champignon, 17=stalactite, 18=boss_altar
+
+const MAP_VILLAGE = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,4,4,0,0,0,0,1,11,11,11,0,0,0,0,4,4,0,0,4,4,0,0,1],
+  [1,0,4,4,0,0,0,0,1,11,11,11,0,0,0,0,4,4,0,0,4,4,0,0,1],
+  [1,0,0,0,0,9,0,0,0,0,0,0,0,9,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0,1],
+  [1,0,5,5,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,3,0,0,0,0,1],
+  [1,0,5,5,0,0,0,0,0,2,2,2,0,0,3,0,0,0,0,3,0,0,0,0,1],
+  [1,0,0,0,0,9,0,0,0,2,2,2,0,0,3,0,4,4,0,3,0,9,0,0,1],
+  [1,0,0,0,0,0,0,0,0,2,10,2,0,0,3,0,4,4,0,3,0,0,0,0,1],
+  [1,0,0,0,0,0,12,12,0,0,0,0,0,0,3,0,0,0,0,3,0,0,0,0,1],
+  [1,0,9,0,0,0,12,12,0,0,0,0,0,0,3,0,0,0,0,3,0,0,9,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,1,1,1,6,1,1,1,6,1,1,1,1,6,1,1,1,1,1],
+];
+
+const MAP_DUNGEON1 = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,7,1],
+  [1,0,1,0,1,0,1,1,1,0,1,0,1,1,0,1,0,1,1,0,1,0,1,0,1],
+  [1,0,1,0,0,0,1,0,0,0,0,0,1,0,0,1,0,0,1,0,0,0,1,0,1],
+  [1,0,1,1,1,0,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,0,1,0,1],
+  [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,1,1,0,1,1,0,1,0,1,1,0,1,1,0,1,0,1,1,1,0,1,0,1],
+  [1,7,0,1,0,0,1,0,0,0,0,1,0,0,1,0,1,0,0,0,0,0,1,0,1],
+  [1,1,0,1,1,0,1,0,1,0,0,1,1,0,1,0,1,1,0,1,0,0,1,0,1],
+  [1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,1],
+  [1,0,1,1,1,0,1,0,0,0,0,1,1,0,1,0,0,1,1,1,0,1,0,0,1],
+  [1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,1,0,0,0,0,0,18,0,0,1,0,0,0,7,0,0,0,1],
+  [1,1,1,1,1,1,1,1,1,1,6,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+];
+
+const MAP_FOREST = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+  [1,0,1,1,0,1,0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,0,1],
+  [1,0,0,0,0,1,0,0,0,1,0,0,1,0,0,0,0,1,0,0,1,0,1,0,1],
+  [1,1,0,1,0,0,0,1,0,0,0,1,0,0,1,0,0,0,0,1,0,0,1,0,1],
+  [1,0,0,1,0,1,0,1,0,1,0,0,0,1,1,0,1,0,0,0,0,1,0,0,1],
+  [1,0,16,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,16,0,0,0,0,0,1],
+  [1,0,0,0,1,0,1,0,1,0,0,0,7,0,0,0,1,0,0,0,1,0,1,0,1],
+  [1,1,0,0,0,0,1,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+  [1,0,0,1,0,16,0,1,0,0,0,0,0,0,1,0,16,0,0,1,0,0,1,0,1],
+  [1,0,1,1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,1,1,0,0,0,0,1],
+  [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,7,1],
+  [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,1,1,1,6,1,1,1,6,1,1,1,1,1,1,1,1,1,1],
+];
+
+const MAP_MINES = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,17,0,0,1,0,0,0,0,17,0,0,0,0,0,0,0,17,0,0,0,0,0,0,1],
+  [1,0,0,1,1,0,1,0,0,0,0,1,0,0,17,0,1,0,0,1,0,0,1,0,1],
+  [1,0,1,0,0,0,1,17,0,1,0,1,0,0,0,0,1,0,0,0,0,0,0,0,1],
+  [1,0,1,0,1,0,0,0,0,1,0,0,0,17,0,0,1,0,1,0,0,1,0,0,1],
+  [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,17,0,1,0,0,1,0,15,15,15,0,0,1,0,0,0,1,0,0,17,0,1,0,1],
+  [1,0,0,1,0,0,0,0,15,7,15,0,0,1,0,0,0,1,0,0,0,0,0,0,1],
+  [1,0,1,0,0,17,0,0,15,15,15,0,0,0,0,1,0,0,0,1,0,0,1,0,1],
+  [1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
+  [1,0,1,1,0,0,0,0,0,0,17,0,1,0,0,0,1,0,0,1,17,0,0,0,1],
+  [1,0,0,0,0,0,1,0,0,17,0,0,0,0,0,0,0,0,0,0,0,0,0,7,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,1,1,1,6,1,1,1,1,1,1,1,1,6,1,1,1,1,1],
+];
+
+const MAP_RUINS = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,13,0,0,13,0,0,13,0,0,0,0,13,0,0,0,13,0,0,13,0,0,0,0,1],
+  [1,0,0,13,0,0,0,0,0,13,0,0,0,0,13,0,0,0,0,0,0,13,0,0,1],
+  [1,0,13,0,0,1,0,0,13,0,0,1,0,13,0,0,1,0,0,13,0,0,0,0,1],
+  [1,0,0,0,1,1,0,0,0,0,1,1,0,0,0,1,1,0,0,0,0,0,1,0,1],
+  [1,0,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,13,0,0,0,0,0,1],
+  [1,13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,1],
+  [1,0,0,13,0,1,0,0,0,7,0,0,1,0,0,0,0,1,0,0,13,0,0,0,1],
+  [1,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,1,1,0,0,0,0,13,0,1],
+  [1,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,13,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,18,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,1,1,1,6,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+];
+
+// ============================================================
+// NPCS DATA (riche)
+// ============================================================
+const NPC_DATA = {
+  village: [
+    {id:'sira', x:2.5,y:2.5, name:'Sira', emoji:'👩', color:'#f0a0c0',
+     dialogTree:[
+       {id:'root', text:"Kael ! Tu es enfin éveillé. Je suis Sira, ancienne du village. Aethon est en danger. Il y a sept jours, le Cristal Noir s'est réveillé dans les Ruines Oubliées à l'est. Ses ténèbres se répandent.", choices:[
+         {label:"Que dois-je faire ?", next:'quest'},
+         {label:"C'est quoi le Cristal Noir ?", next:'lore'},
+       ]},
+       {id:'quest', text:"Tu dois réunir les Trois Orbes Élémentaires : Foudre, Feu et Glace. Seule leur union peut sceller le Cristal. Varen le sage sait où les trouver. Cherche-le dans la bibliothèque, au nord.", choices:[
+         {label:"Je comprends", next:'end', flag:'metSira', quest:'q1'},
+       ]},
+       {id:'lore', text:"Le Cristal Noir est une relique de l'Ancienne Guerre. Il amplifie la magie noire et corrompt tout ce qu'il touche. Le Seigneur des Ombres l'a réveillé pour envahir notre monde.", choices:[
+         {label:"Qui est le Seigneur des Ombres ?", next:'lord'},
+         {label:"Comment l'arrêter ?", next:'quest'},
+       ]},
+       {id:'lord', text:"Jadis un grand mage nommé Mordyn. Il a trahi les Cinq Cités et plongé le continent dans les ténèbres. On croyait l'avoir scellé... mais le pacte s'est brisé.", choices:[
+         {label:"Comment réunir les Orbes ?", next:'quest'},
+       ]},
+       {id:'end', text:"Sois prudent, Kael. Le donjon à l'est n'est pas sûr. Et... méfie-toi de Korrath, le garde du village. Quelque chose en lui a changé depuis l'éveil du Cristal.", choices:[]},
+     ]},
+    {id:'ozimuth', x:2.5,y:6.5, name:'Ozimuth', emoji:'🧙', color:'#a0c0f0',
+     dialogTree:[
+       {id:'root', text:"Haha ! Un aventurier avec de l'or ! Bienvenue dans ma boutique. J'ai des articles rares que vous ne trouverez nulle part ailleurs. Appuyez sur ESC pour ouvrir la boutique !", choices:[
+         {label:"Vous avez des armes spéciales ?", next:'weapons'},
+         {label:"Des pouvoirs à apprendre ?", next:'powers'},
+       ]},
+       {id:'weapons', text:"Ah oui ! Mon Épée Runique est forgée par les anciens. Mais si vous voulez la vraie puissance, trouvez les trois Orbes et parlez à Elina. Elle forge la Lame des Ombres avec.", choices:[
+         {label:"Autre chose ?", next:'tip'},
+       ]},
+       {id:'powers', text:"Les pouvoirs s'apprennent en trouvant des reliques ou auprès de mages. Elina au nord-est en sait long sur la magie de Glace. Pour l'Ombre... cherchez dans les Ruines.", choices:[
+         {label:"Merci", next:'end'},
+       ]},
+       {id:'tip', text:"Conseil gratuit : certains ennemis sont vulnérables à des éléments. Les squelettes craignent l'argent, les ombres craignent la lumière. Adaptez votre arsenal !", choices:[]},
+       {id:'end', text:"Bonne chance ! Et revenez avec de l'or... beaucoup d'or.", choices:[]},
+     ]},
+    {id:'varen', x:9.5,y:2.5, name:'Varen le Sage', emoji:'📚', color:'#c0f0a0',
+     dialogTree:[
+       {id:'root', text:"Ah, le porteur du Destin arrive enfin. Je suis Varen. J'ai passé quarante ans à étudier les Orbes Élémentaires. Écoute bien.", choices:[
+         {label:"Où trouver l'Orbe de Foudre ?", next:'orbe1'},
+         {label:"Où trouver l'Orbe de Feu ?", next:'orbe2'},
+         {label:"Où trouver l'Orbe de Glace ?", next:'orbe3'},
+         {label:"Parlez-moi du Seigneur des Ombres", next:'lord'},
+       ]},
+       {id:'orbe1', text:"L'Orbe de Foudre est gardée dans le Donjon de l'Oubli, au fond du couloir est. Un coffre doré la contient. Mais le gardien Brakk veille... vaincs-le d'abord.", choices:[
+         {label:"D'accord", next:'root', quest:'q2'},
+       ]},
+       {id:'orbe2', text:"L'Orbe de Feu gît dans la Forêt Maudite, à l'ouest. Les arbres corrompus la gardent. Il y a aussi un coffre dans la partie nord-est. Prends garde aux Chasseurs d'Ombres.", choices:[
+         {label:"Compris", next:'root', quest:'q3'},
+       ]},
+       {id:'orbe3', text:"L'Orbe de Glace... elle se trouve dans les Mines de Fer, au sud. Garek le mineur la vit jadis dans une chambre de glace. Il peut vous guider. Les cristaux de glace sont son habitat naturel.", choices:[
+         {label:"Je trouverai Garek", next:'root', quest:'q4'},
+       ]},
+       {id:'lord', text:"Mordyn était mon maître. Oui, j'ai honte de l'avouer. Il cherchait l'immortalité et a sacrifié mille âmes pour réveiller le Cristal Noir. Seule la fusion des trois Orbes peut le sceller — et lui.", choices:[
+         {label:"Comment utiliser les Orbes ?", next:'fusion'},
+       ]},
+       {id:'fusion', text:"Une fois les trois Orbes réunis, portez-les à l'autel des Ruines Oubliées. Mais d'abord, trouvez Elina la sorcière. Elle peut vous apprendre la Nova de Glace — indispensable contre Mordyn.", choices:[
+         {label:"Où est Elina ?", next:'elina'},
+       ]},
+       {id:'elina', text:"Elina vit dans la maison nord-est du village. Elle est jeune mais extraordinairement douée. Méfiante au début, mais si vous lui montrez les 3 Orbes, elle vous enseignera.", choices:[
+         {label:"Merci, Varen", next:'end', flag:'metVaren'},
+       ]},
+       {id:'end', text:"Le destin d'Aethon repose entre vos mains, Kael. Je prie pour votre réussite.", choices:[]},
+     ]},
+    {id:'elina', x:16.5,y:2.5, name:'Elina', emoji:'🧝', color:'#80c0ff',
+     dialogTree:[
+       {id:'root', text:"Hm. Un aventurier. Je n'ai pas besoin de compagnie. Que voulez-vous ?", choices:[
+         {label:"Enseigne-moi la Nova de Glace", next:'ice_teach'},
+         {label:"Qui es-tu ?", next:'who'},
+       ]},
+       {id:'who', text:"Je suis Elina, mage de l'École du Givre. J'ai fui la capitale quand Mordyn l'a corrompue. Je refuse de servir les ombres.", choices:[
+         {label:"Tu peux m'aider contre Mordyn ?", next:'help'},
+       ]},
+       {id:'help', text:"Peut-être. Si tu prouvez votre valeur. Réunissez les trois Orbes et revenez me voir. Je vous enseignerai alors la Nova de Glace, le seul sort qui peut figer Mordyn.", choices:[
+         {label:"Je reviendrai avec les Orbes", next:'end'},
+       ]},
+       {id:'ice_teach', text:"Les Orbes... vous les avez ? Laissez-moi voir.", choices:[
+         {label:"[Montrer les 3 Orbes]", next:'teach_yes', requireFlags:['foundOrbe1','foundOrbe2','foundOrbe3']},
+         {label:"Pas encore...", next:'teach_no'},
+       ]},
+       {id:'teach_yes', text:"Impressionnant. Vous avez vraiment réuni les trois Orbes. Bien. Tendez la main... GLACIALIS NOVA ! Le sort est gravé dans votre mémoire. Et... tenez, la Lame des Ombres. Forgée pour vous.", choices:[
+         {label:"Merci, Elina !", next:'end', flag:'learnedGlace', teachPower:'ice', giveWeapon:'shadow'},
+       ]},
+       {id:'teach_no', text:"Revenez quand vous avez les trois Orbes. L'Orbe de Foudre est dans le Donjon, celle de Feu dans la Forêt, celle de Glace dans les Mines.", choices:[]},
+       {id:'end', text:"Allez vaincre Mordyn. Et... soyez prudent. Son pouvoir de régénération est immense. La Nova de Glace l'interrompra.", choices:[]},
+     ]},
+    {id:'garek', x:20.5,y:2.5, name:'Garek le Mineur', emoji:'⛏', color:'#c0a050',
+     dialogTree:[
+       {id:'root', text:"Ugh. Quoi encore ? J'essaie de travailler moi ! Ah, tu cherches l'Orbe de Glace ? J'la vue une fois dans les mines, section B-7. Y'a une chambre de glace bizarre à l'ouest des mines.", choices:[
+         {label:"Comment y accéder ?", next:'access'},
+         {label:"Il y a des dangers ?", next:'danger'},
+       ]},
+       {id:'access', text:"La chambre de glace est entourée de cristaux. Pas moyen d'y entrer sans résistance au froid. Mais... les potions Thermale d'Ozimuth te protègeront. Vaut mieux en prendre une.", choices:[
+         {label:"Merci pour le tuyau", next:'end', flag:'metGarek', quest:'q4'},
+       ]},
+       {id:'danger', text:"Y'a des Golems de Glace là-dedans. Des brutes énormes, insensibles au feu. Mais leur cœur de cristal est fragile si tu les attaques par derrière. Et le Boss : la Reine Gelée. Coriace.", choices:[
+         {label:"Comment y accéder ?", next:'access'},
+       ]},
+       {id:'end', text:"Bonne chance. Et ramène-moi une pépite d'or si t'en trouves, c'est tout ce qui m'intéresse.", choices:[]},
+     ]},
+    {id:'korrath', x:12.5,y:10.5, name:'Korrath', emoji:'🛡', color:'#808080',
+     dialogTree:[
+       {id:'root', text:"... Toi. Je te connais. Kael, le 'héros'. Va donc jouer avec tes petites épées.", choices:[
+         {label:"Quelque chose ne va pas ?", next:'suspicious'},
+         {label:"Tu caches quelque chose", next:'accuse'},
+       ]},
+       {id:'suspicious', text:"Tout va très bien. Le village est en sécurité. Il n'y a rien dans la cave sous la fontaine. Rien du tout. Passe ton chemin.", choices:[
+         {label:"La cave sous la fontaine ?", next:'cave'},
+       ]},
+       {id:'cave', text:"J'ai rien dit. Oublie ça. Les ordres du Seigneur des... euh, du capitaine sont clairs. Personne ne descend là-bas. Va-t-en.", choices:[
+         {label:"Il travaille pour Mordyn !", next:'end'},
+       ]},
+       {id:'accuse', text:"Tu sais trop. Le Seigneur des Ombres a promis que ma famille serait épargnée si... si je le laissais faire. Ils n'ont que moi. Pardonne-moi.", choices:[
+         {label:"Je comprendrai plus tard", next:'end'},
+       ]},
+       {id:'end', text:"...", choices:[]},
+     ]},
+  ],
+  dungeon1: [
+    {id:'ghost', x:12.5,y:6.5, name:'Esprit Errant', emoji:'👻', color:'#aac0ff',
+     dialogTree:[
+       {id:'root', text:"Je... suis piégé ici depuis des siècles. Le boss Brakk garde le passage est. Il est né du Cristal Noir — insensible aux attaques normales. Mais son cœur sur le dos brille... frappe-le là.", choices:[
+         {label:"Merci pour l'avertissement", next:'tip'},
+       ]},
+       {id:'tip', text:"Et méfie-toi des pièges au sol. Ils sont invisibles mais blessent. La Rune de Protection d'Ozimuth les désactive temporairement. Bonne chance, vivant.", choices:[]},
+     ]},
+  ],
+  forest: [
+    {id:'dryad', x:6.5,y:6.5, name:'Dryade Sylva', emoji:'🌿', color:'#60c060',
+     dialogTree:[
+       {id:'root', text:"Tu n'es pas corrompu... bien. Je suis Sylva, gardienne de cette forêt. Depuis l'Éveil, mes arbres souffrent. Les Chasseurs d'Ombres les dévastent.", choices:[
+         {label:"Je peux aider ?", next:'help'},
+         {label:"L'Orbe de Feu est ici ?", next:'orbe'},
+       ]},
+       {id:'help', text:"Vaincs le chef des Chasseurs. Il se nomme Vex. Il patrouille dans la clairière nord. Si tu le tues, la forêt guérira... un peu.", choices:[
+         {label:"Je m'en charge", next:'tip'},
+       ]},
+       {id:'orbe', text:"Oui. Elle est dans un coffre ancien à l'est de la forêt. Mais elle est gardée par Vex. Vaincs-le d'abord.", choices:[
+         {label:"Et le pouvoir du Feu ?", next:'fire_power'},
+       ]},
+       {id:'fire_power', text:"Tu le possèdes déjà ! Mais pour l'amplifier, trouve le Fragment de Lave dans les Mines. Il doublera la puissance de ta Boule de Feu.", choices:[
+         {label:"Merci Sylva", next:'end', flag:'metSylva'},
+       ]},
+       {id:'tip', text:"Conseil : Vex est vulnérable à la Foudre. Et ses sbires se téléportent — utilise le Tourbillon pour les désorienter.", choices:[
+         {label:"Noté !", next:'end'},
+       ]},
+       {id:'end', text:"La forêt vous accueille, Kael. Marchez doucement entre mes racines.", choices:[]},
+     ]},
+  ],
+  mines: [
+    {id:'theron', x:12.5,y:5.5, name:'Theron le Prospecteur', emoji:'🔦', color:'#c0b080',
+     dialogTree:[
+       {id:'root', text:"Psst ! Par ici ! Je suis Theron. Je cherchais des gemmes quand les Golems de Glace ont tout envahi. Tu vas dans la chambre de glace ? Ecoute...", choices:[
+         {label:"Dis-moi tout", next:'tip'},
+         {label:"Quel est le chemin ?", next:'path'},
+       ]},
+       {id:'tip', text:"Les Golems de Glace régénèrent si tu les laisses tranquilles trop longtemps. Frappe vite et sans pitié. Et la Reine Gelée ? Elle crache des éclats. Utilise le Tourbillon pour les dévier.", choices:[
+         {label:"Merci", next:'secret'},
+       ]},
+       {id:'path', text:"Va vers l'ouest, passe les stalactites, tourne à gauche aux deux cristaux. Tu verras la salle de glace. Mais d'abord, prends ma lanterne — elle révèle les pièges invisibles.", choices:[
+         {label:"La Lame des Ombres ?", next:'shadow_hint'},
+       ]},
+       {id:'secret', text:"Oh, et un secret : il y a une salle cachée dans les ruines. Cherche un mur fissuré près de l'autel... je l'ai vu une fois. Quelque chose de puissant y est gardé.", choices:[
+         {label:"Merci Theron", next:'end', flag:'metTheron'},
+       ]},
+       {id:'shadow_hint', text:"La Flèche d'Ombre ? Ce sort légendaire... Elina le connaît mais ne l'enseignera qu'à quelqu'un de digne. Prouve-lui ta valeur en vainquant le boss des Ruines.", choices:[
+         {label:"Je comprends", next:'end'},
+       ]},
+       {id:'end', text:"Sois prudent là-dedans. Et si tu trouves des rubis... rappelle-toi que j'existe !", choices:[]},
+     ]},
+  ],
+  ruins: [
+    {id:'shade', x:6.5,y:6.5, name:'Ombre de Kael', emoji:'🌑', color:'#808090',
+     dialogTree:[
+       {id:'root', text:"...Moi. Tu n'es que moi, venu d'un autre chemin. Dans cette version du destin, j'ai succombé aux ombres. Écoute mon avertissement.", choices:[
+         {label:"Qu'est-il arrivé ?", next:'warn'},
+       ]},
+       {id:'warn', text:"Mordyn peut absorber votre mana. Si tu attaques au corps-à-corps, tu mourras. Utilise la Nova de Glace pour le figer, puis frappe. Ses gemmes sur les épaules sont ses points faibles.", choices:[
+         {label:"Et s'il régénère ?", next:'regen'},
+       ]},
+       {id:'regen', text:"La Flèche d'Ombre brise sa régénération. Mais pour l'apprendre... regarde dans la bibliothèque secrète de Varen. Il a un tome caché sous son bureau.", choices:[
+         {label:"Merci... moi.", next:'end', flag:'learnedOmbre', teachPower:'shadow'},
+       ]},
+       {id:'end', text:"Va. Réussis là où j'ai échoué. Aethon dépend de toi.", choices:[]},
+     ]},
+  ],
+};
+
+// ============================================================
+// ENEMIES DATA
+// ============================================================
+function makeEnemy(type, x, y, extra={}) {
+  const templates = {
+    slime:     {name:'Slime Corrosif',    color:'#4f4',hp:35,atk:8, def:0,spd:0.025,reward:12,xp:15,type:'slime'},
+    bat:       {name:'Chauve-Souris',     color:'#a4a',hp:22,atk:14,def:0,spd:0.04, reward:10,xp:12,type:'bat'},
+    skeleton:  {name:'Squelette',         color:'#ddd',hp:55,atk:18,def:2,spd:0.025,reward:22,xp:25,type:'skeleton'},
+    ghost:     {name:'Fantôme Maudit',    color:'#88c',hp:40,atk:20,def:5,spd:0.035,reward:20,xp:22,type:'ghost'},
+    hunter:    {name:'Chasseur d\'Ombre', color:'#504',hp:60,atk:25,def:3,spd:0.04, reward:30,xp:35,type:'hunter'},
+    golem:     {name:'Golem de Glace',    color:'#80e',hp:90,atk:30,def:8,spd:0.015,reward:40,xp:45,type:'golem'},
+    spider:    {name:'Araignée Venimeuse',color:'#a84',hp:30,atk:16,def:0,spd:0.05, reward:14,xp:18,type:'spider'},
+    shadow:    {name:'Ombre Rampante',    color:'#308',hp:45,atk:22,def:4,spd:0.04, reward:25,xp:28,type:'shadow'},
+    brakk:     {name:'Brakk le Gardien', color:'#f44',hp:200,atk:35,def:10,spd:0.02,reward:100,xp:120,type:'brakk',boss:true},
+    vex:       {name:'Vex, Chef des Ombres',color:'#a04',hp:180,atk:30,def:8,spd:0.03,reward:90,xp:100,type:'vex',boss:true},
+    queen:     {name:'Reine Gelée',       color:'#0ef',hp:220,atk:40,def:12,spd:0.018,reward:110,xp:130,type:'queen',boss:true},
+    mordyn:    {name:'Mordyn, Seigneur des Ombres',color:'#80f',hp:350,atk:50,def:15,spd:0.025,reward:300,xp:500,type:'mordyn',boss:true},
+  };
+  const t = templates[type]||templates.slime;
+  return {...t,...extra, x, y, sx:x, sy:y, id:Math.random(), alive:true, tick:0, aggroed:false, maxHp:t.hp, frozen:0, phase:0};
+}
+
+const ENEMIES_BY_MAP = {
+  dungeon1: [
+    makeEnemy('skeleton',4,4), makeEnemy('skeleton',18,4), makeEnemy('bat',8,7),
+    makeEnemy('ghost',15,9), makeEnemy('bat',20,6), makeEnemy('slime',5,11),
+    makeEnemy('ghost',10,9), makeEnemy('skeleton',16,11),
+    makeEnemy('brakk',12,12,{hp:200,maxHp:200}),
+  ],
+  forest: [
+    makeEnemy('spider',4,4), makeEnemy('hunter',10,3), makeEnemy('spider',18,3),
+    makeEnemy('hunter',5,8), makeEnemy('spider',15,9), makeEnemy('hunter',20,7),
+    makeEnemy('spider',8,11), makeEnemy('hunter',17,11),
+    makeEnemy('vex',12,1,{hp:180,maxHp:180}),
+  ],
+  mines: [
+    makeEnemy('golem',5,3), makeEnemy('golem',18,3), makeEnemy('slime',10,5),
+    makeEnemy('golem',4,9), makeEnemy('shadow',20,9), makeEnemy('golem',10,11),
+    makeEnemy('shadow',15,7), makeEnemy('slime',7,11),
+    makeEnemy('queen',9,7,{hp:220,maxHp:220}),
+  ],
+  ruins: [
+    makeEnemy('shadow',4,4), makeEnemy('shadow',18,4), makeEnemy('ghost',10,5),
+    makeEnemy('shadow',5,9), makeEnemy('ghost',15,9), makeEnemy('shadow',20,7),
+    makeEnemy('shadow',8,11), makeEnemy('ghost',17,11),
+    makeEnemy('mordyn',12,12,{hp:350,maxHp:350}),
+  ],
+};
+
+const CHESTS_BY_MAP = {
+  dungeon1: [
+    {x:23,y:1,open:false,gold:40,item:'orbe1',itemName:'Orbe de Foudre ⚡',desc:'La première des trois Orbes Élémentaires'},
+    {x:1,y:7,open:false,gold:25,item:'potion',itemName:'Potion de Vie',desc:'+50 HP'},
+  ],
+  forest: [
+    {x:12,y:7,open:false,gold:35,item:'orbe2',itemName:'Orbe de Feu 🔥',desc:'La deuxième des trois Orbes Élémentaires'},
+    {x:23,y:11,open:false,gold:20,item:'weapon_silver',itemName:'Lame d\'Argent',desc:'Efficace contre les morts-vivants'},
+  ],
+  mines: [
+    {x:9,y:7,open:false,gold:50,item:'orbe3',itemName:'Orbe de Glace ❄',desc:'La troisième des trois Orbes Élémentaires'},
+    {x:23,y:11,open:false,gold:30,item:'frag_lave',itemName:'Fragment de Lave',desc:'Amplifie la Boule de Feu'},
+  ],
+  ruins: [
+    {x:9,y:7,open:false,gold:80,item:'weapon_crystal',itemName:'Cristal-Lame 💎',desc:'L\'arme ultime forgée du Cristal brisé'},
+  ],
+};
+
+// ============================================================
+// GAME STATE
+// ============================================================
+const GS = {
+  mapName: 'village',
+  maps: {village: MAP_VILLAGE, dungeon1: MAP_DUNGEON1, forest: MAP_FOREST, mines: MAP_MINES, ruins: MAP_RUINS},
+  portals: {
+    village:  [{tx:10,ty:14,dest:'dungeon1',dx:10,dy:1,msg:"Vous entrez dans le Donjon de l'Oubli..."},
+               {tx:14,ty:14,dest:'forest',dx:10,dy:1,msg:"Vous entrez dans la Forêt Maudite..."},
+               {tx:19,ty:14,dest:'mines',dx:10,dy:1,msg:"Vous entrez dans les Mines de Fer..."}],
+    dungeon1: [{tx:10,ty:13,dest:'village',dx:10,dy:12,msg:"Retour au village..."}],
+    forest:   [{tx:10,ty:13,dest:'village',dx:14,dy:12,msg:"Retour au village..."},
+               {tx:14,ty:13,dest:'ruins',dx:10,dy:1,msg:"Vous entrez dans les Ruines Oubliées..."}],
+    mines:    [{tx:10,ty:13,dest:'village',dx:19,dy:12,msg:"Retour au village..."},
+               {tx:19,ty:13,dest:'ruins',dx:10,dy:1,msg:"Vous entrez dans les Ruines Oubliées..."}],
+    ruins:    [{tx:10,ty:13,dest:'village',dx:10,dy:12,msg:"Retour au village..."}],
+  },
+  player: {x:10.5,y:8,hp:100,maxHp:100,mp:80,maxMp:80,gold:50,level:1,xp:0,xpNext:100,baseAtk:20,def:5,spd:2.8},
+  weapon: 'rusty',
+  powers: POWERS_DB.map(p=>({...p,cur_cd:0})),
+  enemies:[], chests:[], npcs:[],
+  attacks:[], particles:[],
+  dir: 2,
+  keys: {},
+  tick: 0,
+  inShop: false,
+  inDialogue: false,
+  curNpc: null,
+  dlgNode: null,
+  attackTimer:0, invTimer:0,
+  msgTimer:0, msgText:'', msgSpeaker:'',
+  camX:0, camY:0,
+  questLog: false,
+  FLAGS, QUESTS,
+  kills:0,
+  showQuestLog:false,
+  mapTransition:0,
+  bossWarned:{},
+};
+
+function playerAtk() { return GS.player.baseAtk + (WEAPONS_DB[GS.weapon]?.atk||0); }
+
+// ============================================================
+// MAP INIT
+// ============================================================
+function initMap(name, dx, dy) {
+  GS.mapName = name;
+  GS.enemies = (ENEMIES_BY_MAP[name]||[]).map(e=>({...e,alive:true,tick:0,aggroed:false,frozen:0}));
+  GS.chests = (CHESTS_BY_MAP[name]||[]).map(c=>({...c,open:!!FLAGS.chestOpened[name+'_'+c.x+'_'+c.y]}));
+  GS.npcs = (NPC_DATA[name]||[]).map(n=>({...n}));
+  if(dx!==undefined) { GS.player.x=dx+0.5; GS.player.y=dy+0.5; }
+  GS.mapTransition=30;
+}
+
+// ============================================================
+// TILE RENDERING
+// ============================================================
+const TILE_COLORS = {
+  0:'#2e4a1c',1:'#162010',2:'#1640a0',3:'#7a6040',4:'#7a4820',
+  5:'#6a2870',6:'#304080',7:'#806010',8:'#b89050',9:'#2e4a1c',
+  10:'#6a5030',11:'#40306a',12:'#505020',13:'#383028',14:'#602010',
+  15:'#5090b0',16:'#3a5828',17:'#404050',18:'#302040',
+};
+
+function drawTile(t, px, py, ox, oy) {
+  ctx.fillStyle = TILE_COLORS[t]||'#222';
+  ctx.fillRect(px, py, TILE, TILE);
+  ctx.save(); ctx.translate(px+ox, py+oy);
+  // tile decorations
+  if(t===0){ctx.fillStyle='#3a6025';ctx.fillRect(4,16,4,4);ctx.fillRect(22,8,3,4);ctx.fillRect(14,24,5,3);}
+  else if(t===1){ctx.fillStyle='#1e3018';ctx.fillRect(4,2,8,22);ctx.fillRect(2,8,5,12);ctx.fillStyle='#0e1e0c';ctx.fillRect(9,0,7,5);}
+  else if(t===2){ctx.fillStyle='rgba(60,160,255,0.25)';ctx.fillRect(2,10,28,5);}
+  else if(t===3){ctx.fillStyle='#6a5030';ctx.fillRect(2,2,28,28);}
+  else if(t===4){
+    ctx.fillStyle='#5a3010';ctx.fillRect(3,10,26,18);
+    ctx.fillStyle='#4a2008';ctx.fillRect(11,20,10,8);
+    ctx.fillStyle='#8a6030';ctx.fillRect(5,10,22,10);
+    ctx.fillStyle='#a08030';ctx.fillRect(8,6,16,6);
+    ctx.fillStyle='rgba(255,200,80,0.2)';ctx.fillRect(12,12,6,7);
+  }
+  else if(t===5){
+    ctx.fillStyle='#4a1860';ctx.fillRect(3,10,26,18);
+    ctx.fillStyle='#8a60a0';ctx.fillRect(5,10,22,8);
+    ctx.fillStyle='#f0c040';ctx.font='12px sans-serif';ctx.fillText('⬡',4,25);
+    ctx.fillStyle='rgba(160,80,240,0.3)';ctx.fillRect(2,2,28,10);
+  }
+  else if(t===6){
+    ctx.strokeStyle='#4080ff';ctx.lineWidth=1.5;
+    for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(16,16,5+i*4,0,Math.PI*2);ctx.globalAlpha=0.6-i*0.15;ctx.stroke();}
+    ctx.globalAlpha=1;
+    ctx.fillStyle='rgba(64,128,255,0.15)';ctx.beginPath();ctx.arc(16,16,16,0,Math.PI*2);ctx.fill();
+  }
+  else if(t===7){
+    ctx.fillStyle='#5a3808';ctx.fillRect(4,14,24,14);
+    ctx.fillStyle='#8a6010';ctx.fillRect(4,10,24,7);
+    ctx.fillStyle='#d0a020';ctx.fillRect(8,8,16,5);
+    ctx.fillStyle='#f8d050';ctx.fillRect(13,11,6,5);
+  }
+  else if(t===9){
+    ctx.fillStyle='#e050a0';ctx.fillRect(11,4,10,10);
+    ctx.fillStyle='#50a040';ctx.fillRect(13,12,4,16);
+  }
+  else if(t===11){
+    ctx.fillStyle='#302050';ctx.fillRect(2,4,28,24);
+    ctx.fillStyle='#5040a0';ctx.fillRect(4,4,24,6);
+    ctx.fillStyle='#f0c040';ctx.font='8px sans-serif';
+    ctx.fillText('📖',6,22);
+  }
+  else if(t===12){
+    ctx.fillStyle='#403020';ctx.fillRect(4,10,24,18);
+    ctx.fillStyle='#604020';ctx.fillRect(8,6,16,8);
+    ctx.strokeStyle='#c0a030';ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(16,14,6,0,Math.PI*2);ctx.stroke();
+  }
+  else if(t===13){
+    ctx.fillStyle='#2a2018';ctx.fillRect(0,0,32,32);
+    ctx.fillStyle='#484030';ctx.fillRect(4,2,8,20);ctx.fillRect(20,8,8,16);
+    ctx.fillStyle='#1a1810';ctx.fillRect(12,4,4,8);
+  }
+  else if(t===14){
+    ctx.fillStyle='#802010';ctx.fillRect(0,0,32,32);
+    ctx.fillStyle='rgba(255,80,0,0.4)';ctx.fillRect(4,12,24,8);
+    ctx.fillStyle='#c04010';ctx.fillRect(8,18,16,10);
+  }
+  else if(t===15){
+    ctx.fillStyle='#4080a0';ctx.fillRect(0,0,32,32);
+    ctx.strokeStyle='rgba(150,230,255,0.6)';ctx.lineWidth=1;
+    for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(4+i*10,4);ctx.lineTo(4+i*10,28);ctx.stroke();}
+  }
+  else if(t===16){
+    ctx.fillStyle='#5a7820';ctx.fillRect(2,8,12,20);
+    ctx.fillStyle='#3a5810';ctx.fillRect(8,4,10,12);ctx.fillRect(16,2,8,14);
+    ctx.fillStyle='rgba(180,220,80,0.3)';ctx.beginPath();ctx.arc(16,14,10,0,Math.PI*2);ctx.fill();
+  }
+  else if(t===17){
+    ctx.fillStyle='#505060';ctx.fillRect(10,16,12,16);
+    ctx.fillStyle='#404050';ctx.beginPath();ctx.moveTo(10,16);ctx.lineTo(16,0);ctx.lineTo(22,16);ctx.closePath();ctx.fill();
+    ctx.fillStyle='rgba(150,160,200,0.3)';ctx.beginPath();ctx.moveTo(12,14);ctx.lineTo(16,4);ctx.lineTo(20,14);ctx.closePath();ctx.fill();
+  }
+  else if(t===18){
+    ctx.fillStyle='#1a0828';ctx.fillRect(0,0,32,32);
+    ctx.strokeStyle='#8020c0';ctx.lineWidth=2;
+    for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(16,16,6+i*4,0,Math.PI*2);ctx.globalAlpha=0.7-i*0.2;ctx.stroke();}
+    ctx.globalAlpha=1;
+    ctx.fillStyle='#c040f0';ctx.fillRect(13,13,6,6);
+  }
+  ctx.restore();
+}
+
+function drawMap() {
+  const map = GS.maps[GS.mapName];
+  if(!map) return;
+  for(let ty=0;ty<map.length;ty++) {
+    for(let tx=0;tx<map[ty].length;tx++) {
+      const t = map[ty][tx];
+      const px = tx*TILE - GS.camX, py = ty*TILE - GS.camY;
+      if(px > -TILE && px < C.width+TILE && py > -TILE && py < C.height+TILE) {
+        drawTile(t, px, py, 0, 0);
+      }
+    }
+  }
+}
+
+// ============================================================
+// PLAYER DRAWING
+// ============================================================
+function drawPlayer() {
+  const p = GS.player;
+  const px = p.x*TILE-GS.camX, py = p.y*TILE-GS.camY;
+  const bob = Math.sin(GS.tick*0.14)*1.5;
+  // shadow
+  ctx.fillStyle='rgba(0,0,0,0.4)';ctx.beginPath();ctx.ellipse(px,py+15,11,4,0,0,Math.PI*2);ctx.fill();
+  if(GS.invTimer>0&&GS.tick%5<3) return;
+  // cloak
+  ctx.fillStyle='#1a3080'; ctx.fillRect(px-9,py-4+bob,18,14);
+  // body armor
+  ctx.fillStyle='#3060c0'; ctx.fillRect(px-7,py-12+bob,14,16);
+  // armor details
+  ctx.fillStyle='#4070d0'; ctx.fillRect(px-6,py-11+bob,4,6);ctx.fillRect(px+2,py-11+bob,4,6);
+  ctx.fillStyle='#c0a030'; ctx.fillRect(px-2,py-8+bob,4,4);
+  // head
+  ctx.fillStyle='#f0c090'; ctx.beginPath();ctx.arc(px,py-16+bob,8,0,Math.PI*2);ctx.fill();
+  // hair / helmet
+  ctx.fillStyle='#202060';ctx.fillRect(px-9,py-22+bob,18,8);
+  ctx.fillStyle='#3040a0';ctx.beginPath();ctx.arc(px,py-20+bob,9,Math.PI,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#c0d0e0';ctx.fillRect(px-1,py-28+bob,2,8);// cimier
+  // eyes
+  ctx.fillStyle='#fff';ctx.fillRect(px-5,py-18+bob,3,3);ctx.fillRect(px+2,py-18+bob,3,3);
+  ctx.fillStyle='#2040ff';ctx.fillRect(px-4,py-17+bob,2,2);ctx.fillRect(px+3,py-17+bob,2,2);
+  // weapon
+  const w = WEAPONS_DB[GS.weapon];
+  ctx.fillStyle=w.color||'#c0d0e0';
+  const wdirs = [[-1,0],[0,-1],[1,0],[0,1]];
+  const [wd,wdd] = wdirs[GS.dir]||[1,0];
+  const wx=px+wd*12, wy=py+wdd*12+bob;
+  if(GS.dir===0||GS.dir===2){
+    ctx.fillRect(wx-2,wy-2,wd*20,3);
+    ctx.fillStyle='#6a4020';ctx.fillRect(wx-(wd>0?0:4),wy-5,4,10);
+  } else {
+    ctx.fillRect(wx-2,wy-2,3,wdd*20);
+    ctx.fillStyle='#6a4020';ctx.fillRect(wx-5,wy-(wdd>0?0:4),10,4);
+  }
+  // low HP warning aura
+  if(p.hp<p.maxHp*0.25){
+    ctx.strokeStyle=`rgba(220,0,0,${0.3+Math.sin(GS.tick*0.15)*0.25})`;
+    ctx.lineWidth=2;ctx.beginPath();ctx.arc(px,py-6+bob,18,0,Math.PI*2);ctx.stroke();
+  }
+}
+
+// ============================================================
+// ENEMY DRAWING
+// ============================================================
+function drawEnemy(e) {
+  if(!e.alive) return;
+  const px=e.x*TILE-GS.camX, py=e.y*TILE-GS.camY;
+  if(px<-40||px>C.width+40||py<-40||py>C.height+40) return;
+  const bob=Math.sin(GS.tick*0.2+e.id*3)*2;
+  const fc = e.frozen>0 ? '#80e0ff' : e.color;
+  ctx.save();
+  if(e.frozen>0){ctx.globalAlpha=0.85;}
+  if(e.type==='slime'){
+    ctx.fillStyle=fc;ctx.beginPath();ctx.ellipse(px,py+bob,13,9,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(px-4,py-3+bob,3,3);ctx.fillRect(px+1,py-3+bob,3,3);
+    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.beginPath();ctx.ellipse(px-3,py-5+bob,3,2,0,0,Math.PI*2);ctx.fill();
+  }else if(e.type==='bat'){
+    ctx.fillStyle=fc;ctx.beginPath();ctx.arc(px,py+bob,7,0,Math.PI*2);ctx.fill();
+    ctx.fillRect(px-18,py-1+bob,10,7);ctx.fillRect(px+8,py-1+bob,10,7);
+    ctx.fillStyle='#fee';ctx.fillRect(px-2,py-2+bob,2,2);ctx.fillRect(px+2,py-2+bob,2,2);
+  }else if(e.type==='skeleton'){
+    ctx.fillStyle=fc;ctx.fillRect(px-6,py-12+bob,12,18);
+    ctx.beginPath();ctx.arc(px,py-18+bob,8,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#222';ctx.fillRect(px-4,py-20+bob,3,3);ctx.fillRect(px+1,py-20+bob,3,3);
+    ctx.strokeStyle='#555';ctx.lineWidth=1;ctx.beginPath();ctx.arc(px,py-14+bob,3,0,Math.PI);ctx.stroke();
+    ctx.strokeStyle=fc;ctx.fillRect(px-8,py-4+bob,3,16);ctx.fillRect(px+5,py-4+bob,3,16);
+  }else if(e.type==='ghost'){
+    ctx.fillStyle=fc;ctx.globalAlpha=(e.frozen>0?0.6:0.7)+Math.sin(GS.tick*0.12)*0.15;
+    ctx.beginPath();ctx.arc(px,py-6+bob,12,0,Math.PI*2);ctx.fill();
+    ctx.fillRect(px-12,py+bob,24,12);
+    for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(px-8+i*8,py+12+bob,4,0,Math.PI);ctx.fill();}
+    ctx.globalAlpha=1;
+    ctx.fillStyle='rgba(0,0,0,0.8)';ctx.fillRect(px-5,py-8+bob,3,4);ctx.fillRect(px+2,py-8+bob,3,4);
+  }else if(e.type==='hunter'){
+    ctx.fillStyle=fc;ctx.fillRect(px-8,py-16+bob,16,22);
+    ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(px-8,py-16+bob,16,22);
+    ctx.fillStyle=fc;ctx.fillRect(px-6,py-16+bob,12,20);
+    ctx.beginPath();ctx.arc(px,py-20+bob,7,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(100,0,160,0.8)';ctx.fillRect(px-3,py-22+bob,2,3);ctx.fillRect(px+1,py-22+bob,2,3);
+  }else if(e.type==='golem'){
+    ctx.fillStyle=fc;ctx.fillRect(px-12,py-20+bob,24,30);
+    ctx.fillStyle=e.frozen>0?'#c0f0ff':'rgba(0,150,255,0.8)';ctx.fillRect(px-5,py-15+bob,10,10);
+    ctx.fillStyle='#fff';ctx.fillRect(px-4,py-13+bob,3,3);ctx.fillRect(px+1,py-13+bob,3,3);
+    ctx.fillStyle=fc;ctx.fillRect(px-18,py-16+bob,8,18);ctx.fillRect(px+10,py-16+bob,8,18);
+  }else if(e.type==='shadow'){
+    ctx.fillStyle=fc;ctx.globalAlpha=0.75+Math.sin(GS.tick*0.1)*0.2;
+    ctx.beginPath();ctx.ellipse(px,py+bob,10,14,0,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;
+    ctx.fillStyle='rgba(255,100,255,0.9)';ctx.fillRect(px-3,py-4+bob,2,3);ctx.fillRect(px+1,py-4+bob,2,3);
+  }else if(e.type==='brakk'){
+    // boss
+    ctx.fillStyle=fc;ctx.fillRect(px-16,py-26+bob,32,36);
+    ctx.fillStyle='#800';ctx.fillRect(px-10,py-30+bob,20,10);// helm
+    ctx.fillStyle='rgba(255,0,0,0.9)';ctx.fillRect(px-4,py-25+bob,3,5);ctx.fillRect(px+1,py-25+bob,3,5);
+    ctx.fillStyle='#600';ctx.fillRect(px-22,py-20+bob,8,24);ctx.fillRect(px+14,py-20+bob,8,24);
+    ctx.strokeStyle='#f44';ctx.lineWidth=2;ctx.beginPath();ctx.arc(px,py-10+bob,18,0,Math.PI*2);ctx.stroke();
+    // HP
+    drawBossHp(e, px, py);
+    ctx.restore(); return;
+  }else if(e.type==='vex'){
+    ctx.fillStyle=fc;ctx.fillRect(px-10,py-20+bob,20,28);
+    ctx.fillStyle='#300';ctx.fillRect(px-12,py-24+bob,24,8);
+    ctx.fillStyle='rgba(200,0,100,0.9)';ctx.fillRect(px-3,py-20+bob,3,4);ctx.fillRect(px+1,py-20+bob,3,4);
+    ctx.strokeStyle='#a04';ctx.lineWidth=2;ctx.beginPath();ctx.arc(px,py-8+bob,14,0,Math.PI*2);ctx.stroke();
+    drawBossHp(e, px, py);
+    ctx.restore(); return;
+  }else if(e.type==='queen'){
+    ctx.fillStyle=fc;ctx.fillRect(px-12,py-22+bob,24,30);
+    ctx.fillStyle='#00aacc';ctx.fillRect(px-5,py-28+bob,10,8);// crown
+    ctx.fillStyle='rgba(0,200,255,0.9)';ctx.fillRect(px-3,py-20+bob,2,3);ctx.fillRect(px+1,py-20+bob,2,3);
+    ctx.strokeStyle='#0ef';ctx.lineWidth=2;ctx.beginPath();ctx.arc(px,py-8+bob,16,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle='rgba(0,200,255,0.2)';ctx.beginPath();ctx.arc(px,py-8+bob,24,0,Math.PI*2);ctx.fill();
+    drawBossHp(e, px, py);
+    ctx.restore(); return;
+  }else if(e.type==='mordyn'){
+    const wave=Math.sin(GS.tick*0.08)*4;
+    ctx.fillStyle=fc;ctx.fillRect(px-14,py-30+bob+wave,28,40);
+    ctx.fillStyle='#200030';ctx.fillRect(px-18,py-36+bob+wave,36,10);// robe top
+    ctx.fillStyle='rgba(150,0,255,0.95)';ctx.fillRect(px-3,py-26+bob+wave,3,5);ctx.fillRect(px+1,py-26+bob+wave,3,5);
+    // gems on shoulders
+    ctx.fillStyle='#00ffff';ctx.fillRect(px-15,py-22+bob+wave,6,6);ctx.fillRect(px+9,py-22+bob+wave,6,6);
+    ctx.strokeStyle='#80f';ctx.lineWidth=3;ctx.beginPath();ctx.arc(px,py-10+bob+wave,22,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle='rgba(120,0,200,0.15)';ctx.beginPath();ctx.arc(px,py-10+bob+wave,32,0,Math.PI*2);ctx.fill();
+    drawBossHp(e, px, py);
+    ctx.restore(); return;
+  }
+  // enemy HP bar
+  const bw=26, bp=e.hp/e.maxHp;
+  ctx.fillStyle='#400';ctx.fillRect(px-bw/2,py-28+bob,bw,4);
+  ctx.fillStyle=bp>0.5?'#0c0':'#f80';if(bp<0.25)ctx.fillStyle='#f00';
+  ctx.fillRect(px-bw/2,py-28+bob,bw*bp,4);
+  if(e.aggroed){ctx.fillStyle='#f44';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('!',px,py-30+bob);ctx.textAlign='left';}
+  ctx.restore();
+}
+
+function drawBossHp(e, px, py) {
+  const bw=60, bp=e.hp/e.maxHp;
+  ctx.fillStyle='#400';ctx.fillRect(px-bw/2,py-44,bw,6);
+  ctx.fillStyle=bp>0.5?'#0c0':'#f80';if(bp<0.25)ctx.fillStyle='#f00';
+  ctx.fillRect(px-bw/2,py-44,bw*bp,6);
+  ctx.fillStyle='#f00';ctx.font='bold 10px Courier New';ctx.textAlign='center';ctx.fillText(e.name,px,py-48);ctx.textAlign='left';
+}
+
+// ============================================================
+// PARTICLES & ATTACKS DRAW
+// ============================================================
+function drawAttacks() {
+  for(const a of GS.attacks) {
+    const px=a.x*TILE-GS.camX, py=a.y*TILE-GS.camY;
+    ctx.save();ctx.globalAlpha=a.life/a.maxLife;
+    if(a.type==='melee'){
+      ctx.strokeStyle=WEAPONS_DB[GS.weapon]?.color||'#fff';ctx.lineWidth=2+a.life/a.maxLife*2;
+      ctx.beginPath();ctx.arc(px,py,a.r,0,Math.PI*2);ctx.stroke();
+    }else if(a.type==='proj'){
+      const ppx=a.px*TILE-GS.camX, ppy=a.py*TILE-GS.camY;
+      ctx.fillStyle=a.color;ctx.beginPath();ctx.arc(ppx,ppy,9,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.6)';ctx.beginPath();ctx.arc(ppx,ppy,5,0,Math.PI*2);ctx.fill();
+    }else if(a.type==='aoe'){
+      ctx.strokeStyle=a.color;ctx.lineWidth=2;
+      for(let i=0;i<6;i++){const ang=(i/6)*Math.PI*2+GS.tick*0.12;
+        ctx.beginPath();ctx.arc(px+Math.cos(ang)*a.r*.6,py+Math.sin(ang)*a.r*.6,6,0,Math.PI*2);ctx.stroke();}
+      ctx.strokeStyle=a.color;ctx.lineWidth=1;ctx.beginPath();ctx.arc(px,py,a.r,0,Math.PI*2);ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+function drawParticles() {
+  for(const p of GS.particles) {
+    ctx.save();ctx.globalAlpha=p.life/p.maxLife;
+    ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x*TILE-GS.camX,p.y*TILE-GS.camY,p.r,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawNPCs() {
+  for(const n of GS.npcs) {
+    const px=n.x*TILE-GS.camX, py=n.y*TILE-GS.camY;
+    if(px<-32||px>C.width+32) continue;
+    ctx.fillStyle='rgba(0,0,0,0.35)';ctx.beginPath();ctx.ellipse(px,py+16,9,4,0,0,Math.PI*2);ctx.fill();
+    // body
+    ctx.fillStyle=n.color||'#888';ctx.fillRect(px-7,py-4,14,16);
+    ctx.beginPath();ctx.arc(px,py-10,9,0,Math.PI*2);ctx.fill();
+    // name
+    ctx.fillStyle='#fff';ctx.font='8px Courier New';ctx.textAlign='center';
+    ctx.fillText(n.name,px,py-24);ctx.textAlign='left';
+    // talk indicator
+    if(dist(GS.player.x,GS.player.y,n.x,n.y)<2.2){
+      ctx.fillStyle='#f0c040';ctx.font='11px sans-serif';ctx.fillText('💬',px+8,py-22);}
+  }
+}
+
+function drawChests() {
+  for(const c of GS.chests) {
+    const px=c.x*TILE-GS.camX, py=c.y*TILE-GS.camY;
+    if(px<-32||px>C.width+32) continue;
+    ctx.fillStyle=c.open?'#4a2808':'#7a5010';ctx.fillRect(px-11,py-7,22,15);
+    ctx.fillStyle=c.open?'#3a2005':'#b08010';ctx.fillRect(px-11,py-9,22,6);
+    if(!c.open){ctx.fillStyle='#f0c040';ctx.fillRect(px-2,py-4,4,5);}
+    else{ctx.strokeStyle='rgba(240,192,0,0.5)';for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(px,py,i*5+2,0,Math.PI*2);ctx.stroke();}}
+    if(!c.open&&dist(GS.player.x,GS.player.y,c.x,c.y)<2){
+      ctx.fillStyle='#fff';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText('[ F ]',px,py-14);ctx.textAlign='left';}
+  }
+}
+
+// ============================================================
+// GAME LOGIC
+// ============================================================
+function dist(ax,ay,bx,by){return Math.sqrt((ax-bx)**2+(ay-by)**2);}
+
+function tileAt(wx,wy) {
+  const map=GS.maps[GS.mapName];
+  const tx=Math.floor(wx),ty=Math.floor(wy);
+  if(!map||ty<0||ty>=map.length||tx<0||tx>=map[ty].length) return 1;
+  return map[ty][tx];
+}
+
+function isBlocked(x,y,r=0.38) {
+  const pts=[[-r,-r],[r,-r],[-r,r],[r,r],[0,-r],[0,r],[-r,0],[r,0]];
+  for(const[dx,dy]of pts){const t=tileAt(x+dx,y+dy);if([1,2,4,5,11].includes(t))return true;}
+  return false;
+}
+
+function showMsg(txt,speaker='',dur=200) {
+  GS.msgText=txt;GS.msgSpeaker=speaker;GS.msgTimer=dur;
+  document.getElementById('msg-wrap').style.display='block';
+  document.getElementById('msg-speaker').textContent=speaker;
+  document.getElementById('msg-text').textContent=txt;
+}
+
+function spawnParticles(x,y,color,n=8,spd=0.1) {
+  for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2;
+    GS.particles.push({x,y,vx:Math.cos(a)*spd*(0.5+Math.random()),vy:Math.sin(a)*spd*(0.5+Math.random()),color,r:1.5+Math.random()*2.5,life:25+Math.random()*25,maxLife:50});}
+}
+
+function damageEnemy(e, dmg, ignoreDef=false) {
+  if(!e.alive) return;
+  const def=ignoreDef?0:e.def||0;
+  // silver bonus vs skeletons
+  let actual=Math.max(1,dmg-def);
+  if(GS.weapon==='silver'&&(e.type==='skeleton'||e.type==='ghost')) actual*=2;
+  e.hp-=actual;
+  spawnParticles(e.x,e.y,'#f44',5,0.09);
+  // floating damage
+  GS.particles.push({x:e.x,y:e.y-0.5,vx:0,vy:-0.04,color:'#fff',r:0,life:40,maxLife:40,text:'-'+actual});
+  if(e.hp<=0) killEnemy(e);
+}
+
+function killEnemy(e) {
+  e.alive=false;
+  spawnParticles(e.x,e.y,'#fc0',12,0.14);
+  const p=GS.player;
+  p.gold+=e.reward||10;
+  p.xp+=e.xp||10;
+  GS.kills++;
+  FLAGS.totalKills++;
+  showMsg(`💀 ${e.name} vaincu ! +${e.reward}⬡ +${e.xp}xp`,'');
+  checkLevelUp();
+  // boss flags
+  if(e.type==='brakk'){FLAGS.killedBoss1=true;showMsg("⚠ Brakk vaincu ! La voie est libre...",'',300);}
+  if(e.type==='vex'){FLAGS.killedBoss2=true;}
+  if(e.type==='queen'){FLAGS.killedBoss3=true;}
+  if(e.type==='mordyn'){
+    FLAGS.killedBoss3=true;
+    setTimeout(()=>{showMsg("🌟 MORDYN EST VAINCU ! AETHON EST SAUVÉ ! Vous avez réuni les Orbes et scellé le Cristal Noir pour l'éternité. FIN !",'VICTOIRE',800);},500);
+  }
+  // rune sword MP restore
+  if(GS.weapon==='rune') p.mp=Math.min(p.maxMp,p.mp+5);
+  // shadow sword HP steal
+  if(GS.weapon==='shadow') p.hp=Math.min(p.maxHp,p.hp+Math.floor(e.atk*0.1));
+}
+
+function checkLevelUp() {
+  const p=GS.player;
+  if(p.xp>=p.xpNext) {
+    p.level++;p.xp-=p.xpNext;p.xpNext=Math.floor(p.xpNext*1.45);
+    p.maxHp+=18;p.hp=p.maxHp;p.maxMp+=12;p.mp=p.maxMp;p.baseAtk+=6;p.def+=2;
+    showMsg(`✨ NIVEAU ${p.level} ! HP+18 MP+12 ATK+6 DEF+2`,'');
+    document.getElementById('lvlup-flash').style.background='rgba(240,192,64,0.35)';
+    setTimeout(()=>document.getElementById('lvlup-flash').style.background='rgba(240,192,64,0)',400);
+  }
+}
+
+function tryAttack() {
+  if(GS.attackTimer>0||GS.inDialogue) return;
+  const w=WEAPONS_DB[GS.weapon];
+  GS.attackTimer=w.speed||22;
+  const p=GS.player;
+  const dirs=[[-1,0],[0,-1],[1,0],[0,1]];
+  const[dx,dy]=dirs[GS.dir]||[1,0];
+  const ax=p.x+dx*w.reach, ay=p.y+dy*w.reach;
+  GS.attacks.push({type:'melee',x:ax,y:ay,r:TILE*w.reach*0.9,life:18,maxLife:18});
+  spawnParticles(ax,ay,w.color||'#fff',4,0.06);
+  for(const e of GS.enemies){if(!e.alive)continue;if(dist(ax,ay,e.x,e.y)<w.reach+0.4) damageEnemy(e,playerAtk());}
+}
+
+function usePower(idx) {
+  const pw=GS.powers[idx];
+  if(!pw||pw.locked||pw.cur_cd>0||GS.player.mp<pw.cost||GS.inDialogue) return;
+  const p=GS.player;
+  p.mp-=pw.cost;pw.cur_cd=pw.cd;
+  if(pw.type==='aoe'){
+    GS.attacks.push({type:'aoe',x:p.x,y:p.y,r:pw.radius*TILE,color:pw.color,life:35,maxLife:35});
+    spawnParticles(p.x,p.y,pw.color,14,0.12);
+    for(const e of GS.enemies){if(!e.alive)continue;if(dist(p.x,p.y,e.x,e.y)<pw.radius){
+      damageEnemy(e,pw.dmg,pw.id==='shadow');
+      if(pw.id==='ice'){e.frozen=180;e.aggroed=false;}
+      if(pw.id==='wind'){e.x+=Math.sign(e.x-p.x)*0.8;e.y+=Math.sign(e.y-p.y)*0.8;}
+    }}
+    showMsg(`${pw.icon} ${pw.name} ! (${pw.dmg} dégâts zone)`,'');
+  } else if(pw.type==='proj'){
+    const dirs=[[-1,0],[0,-1],[1,0],[0,1]];
+    const[ddx,ddy]=dirs[GS.dir]||[1,0];
+    GS.attacks.push({type:'proj',px:p.x,py:p.y,vx:ddx*(pw.speed||0.14),vy:ddy*(pw.speed||0.14),x:p.x,y:p.y,color:pw.color,r:TILE*2,life:80,maxLife:80,dmg:pw.dmg,hit:false,ignoreDef:pw.id==='shadow'});
+    showMsg(`${pw.icon} ${pw.name} lancé !`,'');
+  }
+}
+
+function tryInteract() {
+  if(GS.inDialogue) { advanceDialogue(); return; }
+  const p=GS.player;
+  // NPC dialogue
+  for(const n of GS.npcs) {
+    if(dist(p.x,p.y,n.x,n.y)<2.2) { openDialogue(n); return; }
+  }
+  // Chest
+  for(const c of GS.chests) {
+    if(!c.open&&dist(p.x,p.y,c.x,c.y)<1.8) {
+      openChest(c); return;
+    }
+  }
+  // Portal
+  const ptls=GS.portals[GS.mapName]||[];
+  const tx=Math.floor(p.x),ty=Math.floor(p.y);
+  for(const pt of ptls){
+    if(Math.abs(tx-pt.tx)<=1&&ty===pt.ty){
+      showMsg(pt.msg,'',250);
+      setTimeout(()=>initMap(pt.dest,pt.dx,pt.dy),300);
+      return;
+    }
+  }
+}
+
+function openChest(c) {
+  c.open=true;
+  const key=GS.mapName+'_'+c.x+'_'+c.y;
+  FLAGS.chestOpened[key]=true;
+  const p=GS.player;
+  let msg=`🎁 Coffre ouvert ! +${c.gold}⬡`;
+  if(c.gold) p.gold+=c.gold;
+  if(c.item==='orbe1'){FLAGS.foundOrbe1=true;msg+=` & Orbe de Foudre ⚡ !`;QUESTS.find(q=>q.id==='q2').done=true;}
+  if(c.item==='orbe2'){FLAGS.foundOrbe2=true;msg+=` & Orbe de Feu 🔥 !`;QUESTS.find(q=>q.id==='q3').done=true;}
+  if(c.item==='orbe3'){FLAGS.foundOrbe3=true;msg+=` & Orbe de Glace ❄ !`;QUESTS.find(q=>q.id==='q4').done=true;}
+  if(c.item==='potion'){p.hp=Math.min(p.maxHp,p.hp+50);msg+=` & Potion de Vie !`;}
+  if(c.item==='weapon_silver'){GS.weapon='silver';msg+=` & Lame d'Argent !'`;}
+  if(c.item==='weapon_crystal'){GS.weapon='crystal';msg+=` & Cristal-Lame 💎 !`;}
+  if(c.item==='frag_lave'){const fw=GS.powers.find(pw=>pw.id==='fire');if(fw)fw.dmg+=35;msg+=` & Fragment de Lave ! Feu +35 dégâts !`;}
+  showMsg(msg,'',350);
+  spawnParticles(c.x,c.y,'#f0c040',14,0.12);
+  updateQuestUI();
+}
+
+// ============================================================
+// DIALOGUE SYSTEM
+// ============================================================
+function openDialogue(npc) {
+  GS.inDialogue=true;GS.curNpc=npc;
+  const tree=npc.dialogTree||[];
+  const root=tree.find(n=>n.id==='root')||tree[0];
+  if(!root){GS.inDialogue=false;return;}
+  GS.dlgNode=root;
+  renderDialogue(root,npc);
+  document.getElementById('dialogue-overlay').style.display='block';
+}
+
+function renderDialogue(node,npc) {
+  document.getElementById('dlg-portrait').textContent=npc.emoji||'?';
+  document.getElementById('dlg-portrait').style.borderColor=npc.color||'#446';
+  document.getElementById('dlg-name').textContent=npc.name;
+  document.getElementById('dlg-text').textContent=node.text;
+  const ch=document.getElementById('dlg-choices');
+  ch.innerHTML='';
+  const choices=node.choices||[];
+  if(choices.length===0){
+    // auto-close hint
+    document.getElementById('dlg-hint').textContent='[ F ou Espace pour fermer ]';
+  } else {
+    document.getElementById('dlg-hint').style.display='none';
+    for(const c of choices) {
+      // check requireFlags
+      if(c.requireFlags){
+        const ok=c.requireFlags.every(f=>FLAGS[f]);
+        if(!ok){
+          const div=document.createElement('div');div.className='dlg-choice';
+          div.style.opacity='0.4';div.textContent=c.label+' (conditions non remplies)';
+          ch.appendChild(div);continue;
+        }
+      }
+      const div=document.createElement('div');div.className='dlg-choice';
+      div.textContent=c.label;
+      div.onclick=()=>choiceSelected(c,npc);
+      ch.appendChild(div);
+    }
+    document.getElementById('dlg-hint').style.display='block';
+    document.getElementById('dlg-hint').textContent='[ Cliquez un choix ]';
+  }
+}
+
+function choiceSelected(choice, npc) {
+  // apply flag
+  if(choice.flag) FLAGS[choice.flag]=true;
+  // unlock quest
+  if(choice.quest){ const q=QUESTS.find(q=>q.id===choice.quest);if(q){updateQuestUI();} }
+  // teach power
+  if(choice.teachPower){
+    const pw=GS.powers.find(p=>p.id===choice.teachPower);
+    if(pw){pw.locked=false;showMsg(`✨ Nouveau pouvoir appris : ${pw.name} !`,'',300);}
+    if(choice.quest==='q5'||choice.teachPower==='ice'){QUESTS.find(q=>q.id==='q5').done=true;}
+  }
+  // give weapon
+  if(choice.giveWeapon){GS.weapon=choice.giveWeapon;showMsg(`⚔ Nouvelle arme : ${WEAPONS_DB[choice.giveWeapon]?.name} !`,'',300);}
+  // navigate tree
+  if(choice.next==='end'||!choice.next){closeDialogue();return;}
+  const tree=npc.dialogTree||[];
+  const next=tree.find(n=>n.id===choice.next);
+  if(!next){closeDialogue();return;}
+  GS.dlgNode=next;
+  renderDialogue(next,npc);
+  if((next.choices||[]).length===0){
+    document.getElementById('dlg-hint').textContent='[ F ou Espace pour fermer ]';
+  }
+}
+
+function advanceDialogue() {
+  if(!GS.dlgNode) { closeDialogue(); return; }
+  const choices=GS.dlgNode.choices||[];
+  if(choices.length===0) closeDialogue();
+}
+
+function closeDialogue() {
+  GS.inDialogue=false;GS.curNpc=null;GS.dlgNode=null;
+  document.getElementById('dialogue-overlay').style.display='none';
+}
+
+// ============================================================
+// SHOP
+// ============================================================
+const SHOP_ITEMS_DATA = [
+  {name:'Potion de Vie',    desc:'+60 HP',                        cost:35,  icon:'💊', effect:'hp',    val:60},
+  {name:'Élixir de Mana',  desc:'+50 MP',                        cost:28,  icon:'🫧', effect:'mp',    val:50},
+  {name:'Potion Thermale', desc:'Résistance glace (10 sec)',      cost:45,  icon:'🌡', effect:'cold',  val:1},
+  {name:'Épée de Fer',     desc:'ATK+10, Remplace votre épée',   cost:80,  icon:'⚔', effect:'weapon',val:'iron'},
+  {name:'Épée Runique',    desc:'ATK+35, +MP par coup',          cost:180, icon:'✨', effect:'weapon',val:'rune'},
+  {name:'Bouclier de Fer', desc:'DEF permanente +8',             cost:90,  icon:'🛡', effect:'def',   val:8},
+  {name:'Bottes Runiques', desc:'Vitesse +0.6',                  cost:70,  icon:'👟', effect:'spd',   val:0.6},
+  {name:'Orbe HP',         desc:'HP Max +25',                    cost:120, icon:'❤', effect:'maxhp', val:25},
+  {name:'Orbe Mana',       desc:'MP Max +20',                    cost:100, icon:'💙', effect:'maxmp', val:20},
+];
+
+function buildShopUI() {
+  const grid=document.getElementById('shop-grid');
+  grid.innerHTML='';
+  for(const item of SHOP_ITEMS_DATA) {
+    const div=document.createElement('div');div.className='sitem';
+    div.innerHTML=`<div class="sicon">${item.icon}</div><div class="sname">${item.name}</div><div class="sdesc">${item.desc}</div><div class="sprice">💰 ${item.cost} ⬡</div>`;
+    div.onclick=()=>buyShopItem(item);
+    grid.appendChild(div);
+  }
+}
+
+function buyShopItem(item) {
+  const p=GS.player;
+  if(p.gold<item.cost){showMsg('Pas assez d\'or !'  ,'',150);return;}
+  p.gold-=item.cost;
+  if(item.effect==='hp') p.hp=Math.min(p.maxHp,p.hp+item.val);
+  else if(item.effect==='mp') p.mp=Math.min(p.maxMp,p.mp+item.val);
+  else if(item.effect==='def') p.def+=item.val;
+  else if(item.effect==='spd') p.spd+=item.val;
+  else if(item.effect==='maxhp'){p.maxHp+=item.val;p.hp+=item.val;}
+  else if(item.effect==='maxmp'){p.maxMp+=item.val;p.mp+=item.val;}
+  else if(item.effect==='weapon') GS.weapon=item.val;
+  showMsg(`✅ ${item.name} acheté !`,'',180);
+  document.getElementById('shop-gold').textContent=p.gold;
+}
+
+// ============================================================
+// QUEST UI
+// ============================================================
+function updateQuestUI() {
+  const list=document.getElementById('quest-list');
+  list.innerHTML='';
+  for(const q of QUESTS) {
+    const div=document.createElement('div');
+    div.className='qitem'+(q.done?' done':'');
+    div.textContent=q.title;
+    div.title=q.hint;
+    list.appendChild(div);
+  }
+}
+
+// ============================================================
+// HUD UPDATE
+// ============================================================
+function updateHUD() {
+  const p=GS.player;
+  document.getElementById('hp-bar').style.width=(p.hp/p.maxHp*120)+'px';
+  document.getElementById('mp-bar').style.width=(p.mp/p.maxMp*120)+'px';
+  document.getElementById('xp-bar').style.width=(p.xp/p.xpNext*80)+'px';
+  document.getElementById('hp-text').textContent=p.hp+'/'+p.maxHp;
+  document.getElementById('gold-display').textContent='⬡ '+p.gold;
+  document.getElementById('level-stat').textContent=`Nv.${p.level} | ATK:${playerAtk()} DEF:${p.def}`;
+  document.getElementById('zone-name').textContent=({village:"Village d'Aethon",dungeon1:"Donjon de l'Oubli",forest:'Forêt Maudite',mines:'Mines de Fer',ruins:'Ruines Oubliées'})[GS.mapName]||GS.mapName;
+  document.getElementById('kills-stat').textContent='Ennemis vaincus: '+FLAGS.totalKills;
+  document.getElementById('weapon-name').textContent=WEAPONS_DB[GS.weapon]?.name||'?';
+  for(let i=0;i<GS.powers.length;i++){
+    const pw=GS.powers[i];
+    const slot=document.getElementById('ps'+i);
+    const cdb=document.getElementById('cd'+i);
+    slot.className='pslot'+(pw.locked?' no-mp':pw.cur_cd===0&&p.mp>=pw.cost?' ready':' no-mp');
+    cdb.style.width=pw.locked?'100%':(pw.cur_cd/pw.cd*100)+'%';
+    if(pw.locked) slot.children[0].nextSibling.textContent='🔒';
+    else slot.children[0].nextSibling.textContent=pw.icon;
+  }
+  if(GS.msgTimer>0) GS.msgTimer--;
+  else document.getElementById('msg-wrap').style.display='none';
+}
+
+// ============================================================
+// MAIN UPDATE
+// ============================================================
+function update() {
+  GS.tick++;
+  if(GS.inDialogue||GS.inShop) { updateHUD(); return; }
+  if(GS.mapTransition>0){GS.mapTransition--;return;}
+  const p=GS.player;
+  // movement
+  const mv=[0,0];
+  if(KEYS['ArrowLeft']||KEYS['KeyA']||KEYS['KeyQ']){mv[0]-=1;if(!KEYS['ArrowRight']&&!KEYS['KeyD'])GS.dir=0;}
+  if(KEYS['ArrowRight']||KEYS['KeyD']){mv[0]+=1;if(!KEYS['ArrowLeft']&&!KEYS['KeyA']&&!KEYS['KeyQ'])GS.dir=2;}
+  if(KEYS['ArrowUp']||KEYS['KeyW']||KEYS['KeyZ']){mv[1]-=1;if(!KEYS['ArrowDown']&&!KEYS['KeyS'])GS.dir=1;}
+  if(KEYS['ArrowDown']||KEYS['KeyS']){mv[1]+=1;if(!KEYS['ArrowUp']&&!KEYS['KeyW']&&!KEYS['KeyZ'])GS.dir=3;}
+  const len=Math.sqrt(mv[0]*mv[0]+mv[1]*mv[1])||1;
+  const spd=p.spd/TILE;
+  if(mv[0]||mv[1]){
+    const nx=p.x+mv[0]/len*spd, ny=p.y+mv[1]/len*spd;
+    if(!isBlocked(nx,p.y)) p.x=nx;
+    if(!isBlocked(p.x,ny)) p.y=ny;
+  }
+  // portal auto-hint
+  const ptls=GS.portals[GS.mapName]||[];
+  const tx=Math.floor(p.x),ty=Math.floor(p.y);
+  for(const pt of ptls){if(Math.abs(tx-pt.tx)<=1&&ty===pt.ty&&GS.tick%80===0){showMsg('⬡ Portail — Appuyez F pour voyager','',120);}}
+  // camera
+  GS.camX=Math.max(0,Math.min(p.x*TILE-C.width/2,(GS.maps[GS.mapName][0].length)*TILE-C.width));
+  GS.camY=Math.max(0,Math.min(p.y*TILE-C.height/2,(GS.maps[GS.mapName].length)*TILE-C.height));
+  // timers
+  if(GS.attackTimer>0)GS.attackTimer--;
+  if(GS.invTimer>0)GS.invTimer--;
+  for(const pw of GS.powers){if(pw.cur_cd>0)pw.cur_cd--;}
+  // attacks
+  GS.attacks=GS.attacks.filter(a=>{
+    a.life--;
+    if(a.type==='proj'){
+      a.px+=a.vx;a.py+=a.vy;
+      if(isBlocked(a.px,a.py,0.25)){a.life=0;return false;}
+      if(!a.hit){for(const e of GS.enemies){if(!e.alive)continue;if(dist(a.px,a.py,e.x,e.y)<1.1){damageEnemy(e,a.dmg,a.ignoreDef);a.hit=true;a.life=0;spawnParticles(a.px,a.py,a.color,10,0.14);break;}}}
+    }
+    return a.life>0;
+  });
+  // enemies
+  for(const e of GS.enemies) {
+    if(!e.alive) continue;
+    e.tick++;
+    if(e.frozen>0){e.frozen--;continue;}
+    const ed=dist(p.x,p.y,e.x,e.y);
+    if(ed<5.5) e.aggroed=true;
+    if(ed>9) e.aggroed=false;
+    // boss warning
+    if(e.boss&&!GS.bossWarned[e.id]&&ed<4){GS.bossWarned[e.id]=true;showMsg(`⚠ ${e.name} approche !`,'',300);}
+    if(e.aggroed&&e.tick%2===0){
+      const exd=p.x-e.x,eyd=p.y-e.y,elen=Math.sqrt(exd*exd+eyd*eyd)||1;
+      const espd=e.spd||0.03;
+      const enx=e.x+exd/elen*espd,eny=e.y+eyd/elen*espd;
+      if(!isBlocked(enx,e.y,0.3))e.x=enx;
+      if(!isBlocked(e.x,eny,0.3))e.y=eny;
+      if(ed<0.85&&GS.invTimer===0){
+        const dmg=Math.max(1,e.atk-Math.floor(p.def*0.7));
+        p.hp-=dmg;GS.invTimer=55;
+        showMsg(`💥 ${e.name} vous frappe ! -${dmg} HP`,'',150);
+        spawnParticles(p.x,p.y,'#f44',7,0.09);
+        if(p.hp<=0){
+          p.hp=0;
+          document.getElementById('death-screen').style.display='flex';
+        }
+      }
+    } else if(!e.aggroed&&e.tick%50===0){
+      const px2=e.sx+(Math.random()-.5)*4,py2=e.sy+(Math.random()-.5)*4;
+      if(!isBlocked(px2,py2,0.3)){e.x+=(px2-e.x)*0.15;e.y+=(py2-e.y)*0.15;}
+    }
+  }
+  // particles
+  for(const pt of GS.particles){pt.x+=pt.vx;pt.y+=pt.vy;pt.life--;}
+  GS.particles=GS.particles.filter(pt=>pt.life>0);
+  // regen
+  if(GS.tick%100===0&&p.mp<p.maxMp)p.mp=Math.min(p.maxMp,p.mp+3);
+  if(GS.tick%400===0&&p.hp<p.maxHp)p.hp=Math.min(p.maxHp,p.hp+1);
+  updateHUD();
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render() {
+  ctx.clearRect(0,0,C.width,C.height);
+  ctx.fillStyle='#050510';ctx.fillRect(0,0,C.width,C.height);
+  drawMap();
+  drawChests();
+  drawNPCs();
+  for(const e of GS.enemies) drawEnemy(e);
+  drawPlayer();
+  drawAttacks();
+  drawParticles();
+  // floating damage numbers
+  for(const pt of GS.particles){
+    if(pt.text){
+      ctx.fillStyle='#fff';ctx.font='bold 11px Courier New';
+      ctx.textAlign='center';
+      ctx.globalAlpha=pt.life/pt.maxLife;
+      ctx.fillText(pt.text,pt.x*TILE-GS.camX,pt.y*TILE-GS.camY);
+      ctx.globalAlpha=1;ctx.textAlign='left';
+    }
+  }
+  // map transition fade
+  if(GS.mapTransition>0){
+    ctx.fillStyle=`rgba(0,0,0,${GS.mapTransition/30})`;ctx.fillRect(0,0,C.width,C.height);
+  }
+  // vignette
+  const vg=ctx.createRadialGradient(C.width/2,C.height/2,C.height*.25,C.width/2,C.height/2,C.height*.75);
+  vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,0.55)');
+  ctx.fillStyle=vg;ctx.fillRect(0,0,C.width,C.height);
+}
+
+function loop(){update();render();requestAnimationFrame(loop);}
+
+// ============================================================
+// INPUT
+// ============================================================
+const KEYS={};
+window.addEventListener('keydown',e=>{
+  KEYS[e.code]=true;
+  if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+  if(e.code==='Space'){if(GS.inDialogue)advanceDialogue();else tryAttack();}
+  if(e.code==='KeyF') tryInteract();
+  if(e.code==='Digit1'||e.code==='Numpad1') usePower(0);
+  if(e.code==='Digit2'||e.code==='Numpad2') usePower(1);
+  if(e.code==='Digit3'||e.code==='Numpad3') usePower(2);
+  if(e.code==='Digit4'||e.code==='Numpad4') usePower(3);
+  if(e.code==='Digit5'||e.code==='Numpad5') usePower(4);
+  if(e.code==='Escape'){
+    if(GS.inDialogue){closeDialogue();return;}
+    if(GS.mapName==='village'){GS.inShop=!GS.inShop;document.getElementById('shop-overlay').style.display=GS.inShop?'flex':'none';document.getElementById('shop-gold').textContent=GS.player.gold;}
+  }
+  if(e.code==='Tab'){e.preventDefault();GS.showQuestLog=!GS.showQuestLog;document.getElementById('quest-log').style.display=GS.showQuestLog?'block':'none';}
+});
+window.addEventListener('keyup',e=>{KEYS[e.code]=false;});
+
+document.getElementById('close-shop').onclick=()=>{GS.inShop=false;document.getElementById('shop-overlay').style.display='none';};
+document.getElementById('respawn-btn').onclick=()=>{
+  const p=GS.player;
+  p.hp=Math.floor(p.maxHp*0.5);p.gold=Math.max(0,p.gold-30);
+  initMap('village',10,8);
+  document.getElementById('death-screen').style.display='none';
+  showMsg('Vous ressuscitez au village... -30⬡','',250);
+};
+
+// ============================================================
+// START
+// ============================================================
+buildShopUI();
+updateQuestUI();
+initMap('village',10,8);
+showMsg("Bienvenue à Aethon ! Parlez aux PNJ avec F pour débuter votre quête.",'',400);
+loop();
+</script>
+</body>
+</html>
